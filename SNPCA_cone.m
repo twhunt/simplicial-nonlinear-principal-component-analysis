@@ -6,8 +6,6 @@ function [] = SNPCA_cone()
 % surf_coords_x, etc. are the cartesian coordinates of points on the torus
 % the variables formerly known as xd, yd, zd
 
-nnz_egnvals = 3;
-
 noise_magnitude = 0;
 %noise_magnitude = .05;
 %noise_magnitude = .01;
@@ -18,7 +16,7 @@ noise_magnitude = 0;
 %generate points on the torus gaussian perturbation to each coordinate
 seed = 1;
 rnd_strm = RandStream('mt19937ar','seed', seed);
-RandStream.setDefaultStream(rnd_strm);
+RandStream.setGlobalStream(rnd_strm);
 n   = 1e4; %number of data 
 cone_height = 2; %horizontal torus radius
 cone_radius = 1; %vertical torus radius
@@ -30,7 +28,7 @@ cone_srfc_area = pi*cone_radius*sqrt(cone_radius^2 + cone_height^2);
 ttl_srfc_area  = cone_srfc_area + disk_srfc_area;
 pnt_dnsty      = n/ttl_srfc_area;
 
-[rtn_mtrx R] = qr(rand(state_space_dmnsn));
+[rtn_mtrx, R] = qr(rand(state_space_dmnsn));
 srfc_crdnts = rtn_mtrx(:,1:3)*cone_crdnts;
 
 disp(['Cone height: ' num2str(cone_height)])
