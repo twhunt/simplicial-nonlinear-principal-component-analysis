@@ -1,0 +1,567 @@
+\documentclass[11pt]{amsart}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\usepackage{listings}
+
+
+\title{SNPCA documentation}
+%\author{The Author}
+%\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+\section{Running SNPCA with a driver file}
+\label{sec:driverFile}
+
+The easiest way to run the SNPCA algorithm is to use a driver file, whose main sections are:
+\begin{enumerate}
+\item
+Set algorithm parameters in structure named \verb+SNPCA_params+ structure.
+\item
+Generate the set of surface data point coordinates.
+\item
+Call \verb+SNPCA_interleaved_main+ with surface data point coordinates and SNPCA algorithm parameters
+\end{enumerate}
+The user can reverse or interleave items $1$ and $2$.
+The fields of \verb+SNPCA_params+ are described in Section \ref{sec:snpcaFields}.
+
+Here's the body of an SNPCA driver for torus data in $\mathbb{R}^3$ with no noise, with the three main sections separated by comments.
+
+\begin{verbatim}
+function [] = SNPCA_interleaved_torus_local_data_Q()
+
+state_space_dmnsn = 3;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Set SNPCA algorithm parameters in SNPCA_params structure
+SNPCA_params = new_SNPCA_params();
+
+SNPCA_params.chrctrstc_lngth               = .5;
+SNPCA_params.cnstrnt_rad_fac               = .5*sqrt(3);
+SNPCA_params.new_tri_max_edg_lngth         = 1.5*SNPCA_params.chrctrstc_lngth;
+SNPCA_params.srch_rad_fac1                 = 1.0;
+SNPCA_params.srch_rad_fac2                 = 1.0;
+SNPCA_params.intl_pt_ind                   = 1;
+SNPCA_params.prfrd_cnstrnt_rds             = .5*sqrt(3)*SNPCA_params.chrctrstc_lngth;
+SNPCA_params.prfrd_cnstrnt_rds_wght        = .1;
+SNPCA_params.non_adj_tri_dist_tol          = .5*SNPCA_params.chrctrstc_lngth;
+SNPCA_params.cand_vert_max_nudge_dist      = SNPCA_params.chrctrstc_lngth;
+SNPCA_params.adj_vert_max_nudge_dist       = .25*SNPCA_params.chrctrstc_lngth;    
+SNPCA_params.emprcl_drctn_crrltn_eval_bias = 1e-6;
+SNPCA_params.plot_frqncy                   = 1;
+SNPCA_params.rtn_mtrx                      = eye(3);
+SNPCA_params.nnz_egnvals                   = 3;
+SNPCA_params.emprcl_drctn_egn_sprs_algrthm = false;
+SNPCA_params.max_num_restarts              = 1;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Generate set of surface data point coordinates
+noise_magnitude = 0;
+seed = 0;
+rnd_strm = RandStream('mt19937ar','seed', seed);
+RandStream.setGlobalStream(rnd_strm);
+n   = 1e4; %number of data 
+rh  = 4; %horizontal torus radius
+rd  = 1; %vertical torus radius
+trs_crdnts = gen_torus_data_pts2(rh, rd, n);
+
+srfc_crdnts = SNPCA_params.rtn_mtrx(:,1:3)*trs_crdnts;
+
+disp(['Torus large radius: ' num2str(rh)])
+disp(['Torus small radius: ' num2str(rd)])
+disp(['state space dimension: ' num2str(state_space_dmnsn)])
+
+disp(['Number surface data points: ' num2str(n)])
+disp(['Noise magnitude: ' num2str(noise_magnitude)])
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Call SNPCA_interleaved_main with surface data point coordinates 
+%and SNPCA algorithm parameters
+[vrtx_crdnts, tri_vrtx_inds, edg_vrtx_inds, ...
+    P_dmnt_egnvctrs, P_dmnt_egnvals] ... 
+    = ...
+    SNPCA_interleaved_main(srfc_crdnts, SNPCA_params);
+\end{verbatim}
+
+\section{List of driver files}
+\begin{itemize}
+\item
+\verb+SNPCA_cone+
+\item
+\verb+SNPCA_Ford_LIDAR+
+\item
+\verb+SNPCA_sphere+
+\item
+\verb+SNPCA_swiss_roll+
+\item
+\verb+SNPCA_torus+
+\item
+\verb+SNPCA_twisted_sheet+
+\end{itemize}
+
+\section{Fields of SNPCA\_params structure}
+\label{sec:snpcaFields}
+The function \verb+new_SNPCA_params()+ returns an instance of the \verb+SNPCA_params+ struct.
+
+\noindent
+\verb+adj_vert_max_nudge_dist+\\
+\noindent
+Tolerance used to determine whether to merge a front edge of the candidate triangle that is nearly parallel to an adjacent front edge.
+Typically set to $.25$ times the characteristic length.
+The criteria should really be based on the angle of the two edges as well, but is not implemented this way.
+\\[\baselineskip]
+\noindent
+\verb+cand_vert_max_nudge_dist+\\
+\noindent
+The maximum allowable distance from the minimizer of the constrained minimization problem to the nearest surface data point.
+The algorithm rejects the candidate triangle if this distance exceeds the tolerance specified by this parameter.
+Contrast to \verb+new_tri_max_edg_lngth+ in the seam sewing stage.
+\\[\baselineskip]
+\noindent
+\verb+chrctrstc_lngth+\\
+\noindent
+The characteristic length scale.
+\\[\baselineskip]
+\noindent
+\verb+cnstrnt_rad_fac+\\
+\noindent
+The radius of the constraint sphere expressed as a multiple of the active edge length. 
+Setting this to $\sqrt{3}/2$ allows for an equilateral triangle.
+The radius of the constraint sphere is calculated as the weighted average of this dynamically computed radius, and a user supplied preferred value of the radius.
+See entries for \verb+prfrd_cnstrnt_rds+ and \verb+prfrd_cnstrnt_rds_wght+ to see how the radius is calculated in the code.
+\\[\baselineskip]
+\noindent
+\verb+emprcl_drctn_crrltn_eval_bias+\\
+\noindent
+The value of $\mu$ in $(P + \mu I)^{-1}$, where $P$ is the empirical direction covariance matrix.
+\\[\baselineskip]
+\noindent
+\verb+emprcl_drctn_egn_sprs_algrthm+\\
+\noindent
+Set to \verb+true+ if you want Matlab to use a sparse matrix algorithm to calculate the eigen-decomposition of the empirical direction covariance matrix.
+See entry for \verb+nnz_egnvals+.
+\\[\baselineskip]
+\noindent
+\verb+INTL_EDG_FIFO_LNGTH+\\
+\noindent
+The initial amount of space allocated for the edge stack, as measured as the number of edges the edge stack can hold.
+The edge stack can grow to hold more edges if the number of edges on the stack grows larger than \verb+INTL_EDG_FIFO_LNGTH+.
+The default set in \verb+new_SNPCA_params()+ is $1024$.
+\\[\baselineskip]
+\noindent
+\verb+intl_pt_ind+\\
+\noindent
+Specifies which surface data point the algorithm should start at.
+The column indexed by \verb+intl_pt_ind+ of the surface data point coordinates matrix contains the coordinates of one of the vertices of the edge shared by the two initial triangles.
+\\[\baselineskip]
+\noindent
+\verb+max_num_restarts+\\
+\noindent
+The maximum number of times the algorithm will go through the advancing front and seam sewing stages.
+\\[\baselineskip]
+\noindent
+\verb+MAX_NUM_VRTCS+\\
+The maximum number of vertices allowed in the triangulation.
+The default set in \verb+new_SNPCA_params()+ is $2048$.
+\noindent
+\\[\baselineskip]
+\noindent
+\verb+new_tri_max_edg_lngth+\\
+\noindent
+The maximum edge length of a new triangle created during the seam sewing stage.
+Contrast to \verb+cand_vert_max_nudge_dist+ in the advancing front stage.
+\\[\baselineskip]
+\noindent
+\verb+nnz_egnvals+\\
+\noindent
+The number eigenvalues of the empirical direction covariance matrix that are not set to zero inside the code.
+The sparse eigen-decomposition algorithm (\verb+emprcl_drctn_egn_sprs_algrthm+ set to \verb+true+) requires this parameter, and the non-sparse algorithm respects it.
+%If the empirical direction covariance matrix is $50\times50$ but has only $3$ non-negligible eigenvalues, then the user should set \verb+nnz_egnvals+ to $3$.
+\\[\baselineskip]
+\noindent
+\verb+non_adj_tri_dist_tol+\\
+\noindent
+Inter-triangle distance tolerance used to accept/reject candidate triangle.
+If the candidate triangle overlaps with an existing triangle and the distance between the two triangles is less than \verb+non_adj_tri_dist_tol+, then the algorithm rejects the candidate triangle.
+\\[\baselineskip]
+\noindent
+\verb+path_saved_data+\\
+A string containing the path where the algorithm should save its state after completing an advancing front or seam sewing stage.
+The default set in \verb+new_SNPCA_params()+ is \verb+interleaved_data+ followed by the system path separator returned by \verb+filesep()+.
+\noindent
+\\[\baselineskip]
+\noindent
+\verb+plot_frqncy+\\
+\noindent
+Set to $0$ to suppress plotting while the algorithm is running, otherwise set to a positive number.
+The ``frqncy'' in the name is a misnomer. 
+The code treats this variable as a boolean, where values less than or equal to zero correspond to false, and positive values correspond to true.
+\\[\baselineskip]
+\noindent
+\verb+prfrd_cnstrnt_rds+\\
+The ``preferred" radius of the constraint sphere. Typically set to $\sqrt{3}/2$ times the characteristic length.
+Unlike the relative radius specified by \verb+cnstrnt_rad_fac+, this value is constant.
+See entries for \verb+prfrd_cnstrnt_rds_wght+ and \verb+cnstrnt_rad_fac+.
+\\[\baselineskip]
+\noindent
+\verb+prfrd_cnstrnt_rds_wght+\\
+\noindent
+The weight put on \verb+prfrd_cnstrnt_rds+ when calculating the constraint sphere radius as a weighted average of the preferred and nominal values.
+Set this parameter to zero to make the constraint sphere radius equal to \verb+cnstrnt_rad_fac+ times the active edge length.
+\\[\baselineskip]
+\noindent
+\verb+rtn_mtrx+\\
+\noindent
+A user specified orthonormal matrix used for embedding points in a subspace of a higher dimensional space, and for plotting points in a higher dimensional space.
+For example, \verb+rtn_mtrx(:,1:3)*trs_crdnts+ embeds the torus surface data points in a higher dimensional space.
+The algorithm plots \verb+rtn_mtrx(:,1:3).'*vrtx_crdnts+ (which is in $\mathbb{R}^3$) when plotting the triangulation.
+\\[\baselineskip]
+\noindent
+\verb+save_data+\\
+A boolean that determines if algorithm should save its state after completing an advancing front and seam sewing stage.
+The algorithm state data is saved in the directory specified by \verb+path_saved_data+.
+Set this variable to \verb+true+ to ease your debugging efforts.
+\noindent
+\\[\baselineskip]
+\noindent
+\verb+srch_rad_fac1+, \verb+srch_rad_fac2+\\
+\noindent
+The radius of the search sphere as a multiple of the active edge length.
+The empirical direction covariance matrix associated with an active edge vertex is constructed from surface data points inside the search sphere centered at that vertex.
+Typically set to $1$.
+The reason for having two different parameters is no longer valid.
+This should be fixed, but does no harm.
+
+\section{Important functions}
+\subsection*{SNPCA\_interleaved\_main}$ $
+
+\noindent
+Inputs:
+\begin{itemize}
+\item \verb+srfc_crdnts+: Matrix of surface data point coordinates, where the $i^{\text{th}}$ column holds the coordinates of the $i^{\text{th}}$ surface data point.
+\item \verb+SNPCA_params+: See section \ref{sec:snpcaFields}.
+\end{itemize}
+
+\noindent
+Outputs:
+\begin{itemize}
+\item
+\verb+vrtx_crdnts+: Coordinates of the vertices in the triangulation.
+\item
+\verb+tri_vrtx_inds+: Three column matrix, where the $i^{\text{th}}$ row holds the vertex indices of the $i^{\text{th}}$ triangle in the triangulation.
+\item
+\verb+edg_vrtx_inds+: Three column matrix, where the $i^{\text{th}}$ row holds the vertex indices of the $i^{\text{th}}$ edge in the triangulation.
+The first two entries in a row index the vertices that define the edge.
+The third entry indexes the interior vertex of the edge, which is not unique if the edge belongs to two triangles. 
+You shouldn't use the third entry (the purpose it served is no longer relevant).
+\item
+\verb+P_dmnt_egnvctrs+: Cell array of eigenvector matrices.
+\verb+P_dmnt_egnvctrs{i}+: holds the eigenvectors of the empirical direction covariance matrix centered at the $i^{\text{th}}$ vertex in the triangulation.
+\item
+\verb+P_dmnt_egnvals+: Cell array of eigenvalues, stored as column vectors. 
+\verb+P_dmnt_egnvals{i}+ holds the eigenvalues of the empirical direction covariance matrix centered at the $i^{\text{th}}$ vertex in the triangulation.
+\end{itemize}
+
+\subsection*{advancing\_front\_main\_loop}$ $
+
+\noindent
+Inputs:
+\begin{itemize}
+\item
+\verb+srfc_crdnts+: See above.
+\item
+\verb+edg_fifo+: First-in-first-out stack of edges. 
+Inside the body of \verb+advancing_front_main_loop+, edges are popped off the stack until a front edge is encountered, which becomes the active front edge.
+If the candidate triangle generated from the active front edge is accepted, then any new edges are pushed onto the top of the edge stack.
+The stack is implemented as an array with a pointer to the head (\verb+edg_fifo_ind+).
+\item
+\verb+edg_fifo_ind+: Index of the head of \verb+edg_fifo+, i.e. index into the array \verb+edg_fifo+ of the next edge to be popped off the stack.
+\item
+\verb+vrtx_crdnts+: See above.
+\item
+\verb+tri_vrtx_inds+: See above.
+\item
+\verb+edg_vrtx_inds+: See above.
+\item
+\verb+srfc_pt_ind_to_vrtx_ind+: A map from surface data point indices to vertex indices.
+Used an associative array since there are typically far more surface data points than vertex indices.
+If the $i^{\text{th}}$ vertex coincides with the $j^{\text{th}}$ surface data point, then 
+\verb+i == srfc_pt_ind_to_vrtx_ind(j)+ is true.
+\item
+\verb+vrtx_ind_to_srfc_pt_ind+ A map from vertex indices to surface data point indices.
+If the $i^{\text{th}}$ vertex coincides with the $j^{\text{th}}$ surface data point, then
+\\ 
+\verb+j == vrtx_ind_to_srfc_pt_ind(i)+ is true.
+\item
+\verb+intl_mnmzr_crdnts+: Cell array of coordinate vectors that solve the constrained minimization problem.
+\verb+intl_mnmzr_crdnts{i}+ holds the coordinates of the minimizer generated at the $i^{\text{th}}$ edge. 
+\item
+\verb+P_dmnt_egnvctrs+: See above.
+\item
+\verb+P_dmnt_egnvals+: See above.
+\item
+\verb+SNPCA_params+: See Section \ref{sec:snpcaFields}.
+\item
+\verb+plot_hndls+: Structure of plot handles with fields
+\begin{itemize}
+\item
+\verb+surf_pts_hndl+
+\item
+\verb+tris_hndl+
+\item
+\verb+front_hndls+
+\item
+\verb+actv_edg_hndl+
+\item
+\verb+actv_edg_intr_hndl+
+\item
+\verb+cand_vert_and_surf_hdnl+
+\end{itemize}
+\end{itemize}
+
+Outputs:
+\begin{itemize}
+\item
+\verb+vrtx_crdnts+
+\item
+\verb+tri_vrtx_inds+
+\item
+\verb+edg_vrtx_inds+
+\item
+\verb+srfc_pt_ind_to_vrtx_ind+
+\item
+\verb+vrtx_ind_to_srfc_pt_ind+
+\item
+\verb+intl_mnmzr_crdnts+
+\item
+\verb+P_dmnt_egnvctrs+
+\item
+\verb+P_dmnt_egnvals+
+\end{itemize}
+
+
+\subsection*{sew\_seams\_decomp3} $ $
+
+\noindent
+Inputs
+\begin{itemize}
+\item
+\verb+vrtx_crdnts+
+\item
+\verb+tri_vrtx_inds+
+\item
+\verb+edg_vrtx_inds+
+\item
+\verb+invbl_edg_inds+
+\item
+\verb+P_dmnt_egnvctrs+
+\item
+\verb+P_dmnt_egnvals+
+\item
+\verb+rtn_mtrx+
+\item
+\verb+new_tri_max_edg_lngth+
+\item
+\verb+non_adj_tri_dist_tol+
+\item
+\verb+emprcl_drctn_crrltn_eval_bias+
+\item
+\verb+plot_hndls+
+\item
+\verb+plot_frqncy+
+\end{itemize}
+
+\noindent
+Outputs
+\begin{itemize}
+\item
+\verb+tri_vrtx_inds+
+\item
+\verb+edg_vrtx_inds+
+\end{itemize}
+
+
+\section{High level advancing front stage}
+
+%\begin{itemize}
+%\item
+%Generate initial triangulation
+%
+%\end{itemize}
+
+\noindent
+Advancing front stage pseudo code:
+\begin{itemize}
+\item
+While edge stack is non-empty
+\begin{enumerate}
+\item 
+Pop edges off edge stack until front edge encountered
+\label{itm:pop}
+\item 
+Compute empirical direction covariance matrices associated with each vertex of the active front edge
+\label{itm:emprclDrctn}
+\item 
+Compute minimizer of constrained minimization problem
+\label{itm:mnmzr}
+\item 
+Nudge minimizer to nearest (in induced metric) surface data point
+\label{itm:nudge}
+\item 
+Determine if candidate triangle conflicts with existing triangulation
+\label{itm:cnflct}
+\item 
+Push new edges onto edge stack
+\label{itm:pushNewEdgs}
+\end{enumerate}
+\end{itemize}
+
+\noindent
+Pop edges (line \ref{itm:pop})
+\begin{itemize}
+\item
+No function, this is done inside a while loop.
+\end{itemize}
+
+\noindent
+Empirical direction covariance matrices (line \ref{itm:emprclDrctn})
+\begin{itemize}
+\item
+\verb+in_nghbrhd_crdnts+: Get list of points in neighborhood of active edge vertex.
+\item
+\verb+pnts_to_egn_dcmp+: Compute eigen-decompositions of the empirical direction covariance matrices associated with each vertex of the active front edge.
+\end{itemize}
+
+\noindent
+Minimizer (line \ref{itm:mnmzr})
+\begin{itemize}
+\item
+\verb+dstnc_objctv_decomp2+: General induced metric, use to build induced metrics associated with active edge vertices that are passed to \verb+fmincon+.
+\item
+\verb+cnstrnt_x0+: Objective function for \verb+fmincon+. Needed to get a starting point on the constraint sphere that satisfies the isosceles constraint.
+\item 
+\verb+gen_tri_vert_coords3_decomp+: Wrapper for \verb+fmincon+ that generates the minimizer to the constrained minimization problem.
+\end{itemize}
+
+\noindent
+Nudge (line \ref{itm:nudge})
+\begin{itemize}
+\item
+\verb+nearest_srfc_pt_Q2+: Finds the nearest surface data point in the metric induced by the data near the minimizer.
+\end{itemize}
+
+\noindent
+Conflict (line \ref{itm:cnflct})
+\begin{itemize}
+\item
+\verb+cndt_adjcnt_vrtx_indxs+: Two edges are adjacent if they share a vertex.
+This function returns a list of vertices that belong to edges adjacent to the active front edge, but do not belong to the active front edge.
+\item
+\verb+nrby_frnt_edgs+: Returns a list of edge indices that are near the active front edge.
+\item
+\verb+cand_vert_error_tmp+: Determines if the candidate triangle conflicts with a triangle in the existing triangulation.
+\end{itemize}
+
+\section{High level seam sewing stage}
+The set of front edges and their vertices may be viewed as a graph, and the seam sewing stage algorithm decomposes this graph into a set of simple cycles for the purpose of determining the order in which the front edges should be visited.
+The seam sewing stage initializes the edge stack by pushing every edge from each simple cycle onto the stack, where edges that are contiguous in the stack are adjacent in the front.
+It is not essential to the algorithm to decompose the front into simple cycles, but doing so tends to close holes in the triangulation quickly.
+
+The seam sewing stage terminates when there are no front edges (ideally), or when it is impossible to generated a non-conflicting triangle on any front edge.
+
+%\noindent
+%Seam sewing stage pseudo code 
+%
+%WRONG!
+%\begin{itemize}
+%\item While there exists a front edge cycle that contains a viable edge.
+%\begin{enumerate}
+%\item
+%Mark all front edges as viable
+%\item \label{itm:smplCycls}
+%Decompose front into simple cycles
+%
+%\item
+%For each cycle, compute angles between adjacent front edges
+%
+%\item
+%Run seam sewing algorithm on edge
+%
+%\end{enumerate}
+%\end{itemize}
+
+%\noindent
+%Compute all front edge simple cycles
+\subsection*{sew\_seams\_decomp4}$ $
+%The function \verb+sew_seams_decomp3+ performs the seam sewing.
+All the input and output arguments are defined elsewhere in this document.
+
+\noindent
+Inputs:
+\begin{itemize}
+\item
+\verb+vrtx_crdnts+
+\item
+\verb+tri_vrtx_inds+
+\item
+\verb+edg_vrtx_inds+
+\item
+\verb+invbl_edg_inds+
+\item
+\verb+P_dmnt_egnvctrs+
+\item
+\verb+P_dmnt_egnvals+
+\item
+\verb+new_tri_max_edg_lngth+
+\item
+\verb+non_adj_tri_dist_tol+
+\item
+\verb+emprcl_drctn_crrltn_eval_bias+
+\item
+\verb+rtn_mtrx+
+\item
+\verb+plot_hndls+
+\item
+\verb+plot_frqncy+
+\end{itemize}
+
+\noindent
+Outputs:
+\begin{itemize}
+\item
+\verb+tri_vrtx_inds+
+\item
+\verb+edg_vrtx_inds+
+\end{itemize}
+
+The two main functions called by \verb+sew_seams_decomp3+ are:
+\begin{itemize}
+\item
+\verb+frnt_cycl_basis+: Decomposes the front into a set of simple cycles.
+\item
+\verb+new_tris_frm_frnt_edg+: Generates new triangles from front edges and existing vertices. 
+\end{itemize}
+
+\section{Known issues and bugs}
+\begin{itemize}
+\item[Bug:]
+The initial triangles generated after the first advancing front/seam sewing stage can conflict without being rejected.
+This can result in two triangles fitting the same subset of data points.
+
+\item[Issue:]
+The definition of two triangles conflicting is not symmetric, i.e. triangle $T_1$ can conflict with triangle $T_2$, but triangle $T_2$ does not conflict with triangle $T_1$.
+
+\item[Issue:]
+Two nearby triangles that have no edges in common can be nonconflicting, but the algorithm fails to close the seam between them.
+I think this can be remedied by changing the definition of conflict to mark two triangles with no shared vertices as conflicting if their distance is less than some tolerance.
+\end{itemize}
+
+\end{document}  
