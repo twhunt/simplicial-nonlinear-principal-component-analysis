@@ -1,3 +1,4 @@
+*.log
 *.aux
 *.nav
 *.synctex.gz
