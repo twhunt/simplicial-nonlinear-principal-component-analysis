@@ -1,7 +1,8 @@
 function [] = SNPCA_Ford_LIDAR()
 
 
-lidar_data_file_path = 'Scan1000.mat';
+lidar_data_file_path = 'Scan1000.mat'; 
+
 load(lidar_data_file_path);
 
 %crop scene

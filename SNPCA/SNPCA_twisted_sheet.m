@@ -1,6 +1,6 @@
 function [] = SNPCA_twisted_sheet()
 
-seed = 1;
+seed = 1; 
 rnd_strm = RandStream('mt19937ar','seed', seed);
 RandStream.setGlobalStream(rnd_strm);
 num_pnts   = 1e4; %number of data 

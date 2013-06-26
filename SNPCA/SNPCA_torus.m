@@ -1,6 +1,6 @@
 function [] = SNPCA_torus()
 
-state_space_dmnsn = 3;
+state_space_dmnsn = 3;  
 
 SNPCA_params = new_SNPCA_params();
 

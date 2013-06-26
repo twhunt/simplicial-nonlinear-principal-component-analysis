@@ -1,6 +1,7 @@
 function [] = SNPCA_swiss_roll()
 
-seed = 0;
+seed = 0;  
+
 s = RandStream('mt19937ar','Seed',seed);
 RandStream.setGlobalStream(s);
 

@@ -1,6 +1,6 @@
 function [] = SNPCA_sphere()
 
-seed = 0;
+seed = 0; 
 rnd_strm = RandStream('mt19937ar','seed', seed);
 RandStream.setGlobalStream(rnd_strm);
 

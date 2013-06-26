@@ -1,7 +1,7 @@
 function [] = SNPCA_creased_sheet()
 
 
-state_space_dmnsn = 50;
+state_space_dmnsn = 50; 
 
 seed = 0;
 rnd_strm = RandStream('mt19937ar','seed', seed);

@@ -1,7 +1,7 @@
 function [] = SNPCA_cone()
 
 
-seed = 1;
+seed = 1; 
 rnd_strm = RandStream('mt19937ar','seed', seed);
 RandStream.setGlobalStream(rnd_strm);
 
@@ -30,7 +30,7 @@ SNPCA_params.emprcl_drctn_egn_sprs_algrthm = false;
 SNPCA_params.max_num_restarts              = 0;
 
 
-n   = 1e4; %number of data 
+n   = 1e4;  %number of data 
 
 cone_height = 2; %horizontal torus radius
 cone_radius = 1; %vertical torus radius
