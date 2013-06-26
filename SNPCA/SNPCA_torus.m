@@ -4,7 +4,7 @@ state_space_dmnsn = 3;
 
 SNPCA_params = new_SNPCA_params();
 
-SNPCA_params.chrctrstc_lngth               = 3.75;
+SNPCA_params.chrctrstc_lngth               = .75;
 SNPCA_params.cnstrnt_rad_fac               = .5*sqrt(3);
 SNPCA_params.new_tri_max_edg_lngth         = 1.5*SNPCA_params.chrctrstc_lngth;
 SNPCA_params.srch_rad_fac1                 = 1.0;
