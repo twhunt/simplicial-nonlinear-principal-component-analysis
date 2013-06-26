@@ -3,20 +3,18 @@ function [vrtx_crdnts, tri_vrtx_inds, edg_vrtx_inds, ...
     = SNPCA_interleaved_main(srfc_crdnts, SNPCA_params)
 
 
-MAX_NUM_VRTCS = 2048;
 
-SAVE_FREQUENCY = 1;
-%emprcl_drctn_crrltn_mtrx{vrtx_ind} holds the empirical local directin
+%emprcl_drctn_crrltn_mtrx{vrtx_ind} holds the empirical local direction
 %correlation matrix at the vertex associated with vrtx_ind
-%emprcl_drctn_crrltn_mtrx = cell(1, MAX_NUM_VRTCS);
+%emprcl_drctn_crrltn_mtrx = cell(1, SNPCA_params.MAX_NUM_VRTCS);
 
 num_srfc_data_pnts = size(srfc_crdnts, 2);
 
 %empirical covariance matrix P = P_factor*P_factor'
-%P_factor        = cell(1, MAX_NUM_VRTCS);
+%P_factor        = cell(1, SNPCA_params.MAX_NUM_VRTCS);
 %use map with two keys (one key string from catenated ieee to hex function)
-P_dmnt_egnvctrs = cell(1, MAX_NUM_VRTCS);
-P_dmnt_egnvals  = cell(1, MAX_NUM_VRTCS);
+P_dmnt_egnvctrs = cell(1, SNPCA_params.MAX_NUM_VRTCS);
+P_dmnt_egnvals  = cell(1, SNPCA_params.MAX_NUM_VRTCS);
 
 
 %store minimizer computed by constrained optimization problem so we only
@@ -24,11 +22,10 @@ P_dmnt_egnvals  = cell(1, MAX_NUM_VRTCS);
 %the coordinates of the candidate vertex generated from vertices with
 %indices v1 and v2 are stored at intl_mnmzr_crdnts{v1,v2} and
 %intl_mnmzr_crdnts{v2,v1}
-%intl_mnmzr_crdnts = cell(MAX_NUM_VRTCS); %space inefficient!
+%intl_mnmzr_crdnts = cell(SNPCA_params.MAX_NUM_VRTCS); %space inefficient!
 intl_mnmzr_crdnts = {};
 
-INTL_EDG_FIFO_LNGTH = 1024;
-edg_fifo = zeros(1, INTL_EDG_FIFO_LNGTH);
+edg_fifo = zeros(1, SNPCA_params.INTL_EDG_FIFO_LNGTH);
 
 srfc_pnt_is_vbl_intl = true(size(srfc_crdnts, 2), 1);
 
@@ -226,11 +223,10 @@ end
 %starting points
 srfc_pnt_is_vbl_intl(vrtx_ind_to_srfc_pt_ind) = false;
 
-if SAVE_FREQUENCY > 0
+if SNPCA_params.save_data
     disp('Saving initial advancing front run.');
-    save([...
-        'interleaved_data' ...
-        filesep() ...
+    save(...
+        [SNPCA_params.path_saved_data ...
         'SNPCA_interleaved_run_' datestr(now, 30)]);
 end
 
@@ -252,15 +248,14 @@ end
     SNPCA_params.rtn_mtrx, ...    
     plot_hndls, ...
     1);
-%load
-%save
 %/\ skip by calling load /\
 
-if SAVE_FREQUENCY > 0
+if SNPCA_params.save_data
+    
     disp('Saving initial seam sewing run.');
-    save([...
-        'interleaved_data' ...
-        filesep() ...
+    disp('Saving initial advancing front run.');
+    save(...
+        [SNPCA_params.path_saved_data ...
         'SNPCA_interleaved_run_' datestr(now, 30)]);
 end
 
@@ -286,12 +281,13 @@ while fnd_vbl_intl_srfc_pnt ...
 
     
     restart_count = restart_count + 1;
-    if mod(restart_count, SAVE_FREQUENCY) == 0
+    if SNPCA_params.save_data
+        
         disp(['Saving. Number of restarts: ' num2str(restart_count)]);
-        save([...
-            'interleaved_data' ...
-            filesep() ...
+        save(...
+            [SNPCA_params.path_saved_data ...
             'SNPCA_interleaved_run_' datestr(now, 30)]);
+
     end
     
 
