@@ -1,10 +1,10 @@
 function [] = SNPCA_torus()
 
-state_space_dmnsn = 3;  
+state_space_dmnsn = 50;  
 
 SNPCA_params = new_SNPCA_params();
 
-SNPCA_params.chrctrstc_lngth               = .75;
+SNPCA_params.chrctrstc_lngth               = .75; 
 SNPCA_params.cnstrnt_rad_fac               = .5*sqrt(3);
 SNPCA_params.new_tri_max_edg_lngth         = 1.5*SNPCA_params.chrctrstc_lngth;
 SNPCA_params.srch_rad_fac1                 = 1.0;
@@ -26,9 +26,22 @@ SNPCA_params.save_data                     = true;
 
 
 %Generate points on torus surface
-noise_magnitude = 0;
-%noise_magnitude = .05;
-%noise_magnitude = .01;
+
+%Set add_noise to true to add noise to the surface data coordinates
+%Set add_noise_to_all_coordinates to true to add noise to each coordinate
+%after rotation into the higher dimensional space. 
+%Set it to false to add noise to the torus coordinates before rotaion into
+%the higher dimensional space.
+add_noise = true;
+add_noise_to_all_coordinates = false;
+if add_noise
+    %noise_magnitude = 0;
+    %noise_magnitude = .05;
+    noise_magnitude = .01;
+    %noise_magnitude = .0001;
+else
+    noise_magnitude = 0;
+end
 
 seed = 0;
 rnd_strm = RandStream('mt19937ar','seed', seed);
@@ -38,7 +51,22 @@ rh  = 4; %horizontal torus radius
 rd  = 1; %vertical torus radius
 trs_crdnts = gen_torus_data_pts2(rh, rd, n);
 
+if add_noise && ~add_noise_to_all_coordinates
+    noise = randn(3, n);
+    noise = noise_magnitude*noise;
+    
+    trs_crdnts = trs_crdnts + noise;
+end
+
 srfc_crdnts = SNPCA_params.rtn_mtrx(:,1:3)*trs_crdnts;
+
+if add_noise && add_noise_to_all_coordinates
+    noise = randn(state_space_dmnsn, n);
+    noise = noise_magnitude*noise;
+    
+    srfc_crdnts = srfc_crdnts + noise;
+end
+
 
 disp(['Torus large radius: ' num2str(rh)])
 disp(['Torus small radius: ' num2str(rd)])
